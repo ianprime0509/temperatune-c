@@ -7,8 +7,6 @@
 #include "temperament.h"
 #include "util.h"
 
-enum { CENTS_IN_OCTAVE = 1200 };
-
 enum { TABLE_SIZE = 17 };
 
 struct notes {
@@ -18,16 +16,16 @@ struct notes {
 struct note {
 	char *name;
 	/** The offset, in cents, from the base note. */
-	float offset;
+	double offset;
 	struct note *next;
 };
 
 static unsigned int hash(const char *str);
 
-float
+double
 temperament_get_pitch(const struct temperament *t, const char *note, int octave)
 {
-	float offset;
+	double offset;
 
 	if (t == NULL)
 		return -1;
@@ -39,7 +37,7 @@ temperament_get_pitch(const struct temperament *t, const char *note, int octave)
 }
 
 int
-notes_add(struct notes *notes, const char *name, float offset)
+notes_add(struct notes *notes, const char *name, double offset)
 {
 	unsigned int bucket;
 	struct note *note;
@@ -56,7 +54,10 @@ notes_add(struct notes *notes, const char *name, float offset)
 
 	note = xmalloc(sizeof(*note));
 	note->name = xstrdup(name);
-	note->offset = offset;
+	/* Ensure that the offset is >= 0 and < 1200. */
+	note->offset = fmod(offset, CENTS_IN_OCTAVE);
+	if (note->offset < 0)
+		note->offset += CENTS_IN_OCTAVE;
 	note->next = notes->notes[bucket];
 	notes->notes[bucket] = note;
 	return 0;
@@ -108,7 +109,7 @@ notes_get_names(const struct notes *notes)
 }
 
 int
-notes_get_offset(const struct notes *notes, const char *name, float *offset)
+notes_get_offset(const struct notes *notes, const char *name, double *offset)
 {
 	unsigned int bucket;
 	const struct note *note;

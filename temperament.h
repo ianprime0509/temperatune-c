@@ -1,3 +1,5 @@
+enum { CENTS_IN_OCTAVE = 1200 };
+
 /**
  * A complete description of a musical temperament.
  */
@@ -6,7 +8,7 @@ struct temperament {
 	char *description;
 	char *source;
 	char *octave_base_name;
-	float reference_pitch;
+	double reference_pitch;
 	char *reference_name;
 	int reference_octave;
 	struct notes *notes;
@@ -26,14 +28,14 @@ int temperament_parse(struct temperament *t, FILE *input, char *errbuf, size_t e
  * Returns the pitch (in Hz) of the given note in the given octave, or
  * -1 if there is no such note.
  */
-float temperament_get_pitch(const struct temperament *t, const char *note, int octave);
+double temperament_get_pitch(const struct temperament *t, const char *note, int octave);
 
 /**
  * Returns the name of the nearest note to the given pitch (in Hz). The
  * pointer should not be freed by the caller. If offset is not NULL, then the
  * offset (in cents) from the exact value of the note will be stored there.
  */
-const char *temperament_nearest_note(const struct temperament *t, float pitch, float *offset);
+const char *temperament_nearest_note(const struct temperament *t, double pitch, double *offset);
 
 /**
  * The notes of a temperament.
@@ -44,7 +46,7 @@ struct notes;
  * Adds the note with the given name and offset (in cents) from the reference
  * note. If the note is already defined, its definition is updated.
  */
-int notes_add(struct notes *notes, const char *name, float offset);
+int notes_add(struct notes *notes, const char *name, double offset);
 
 struct notes *notes_alloc(void);
 
@@ -64,7 +66,7 @@ char **notes_get_names(const struct notes *notes);
  * is not NULL, the offset will be stored there; otherwise, this function
  * is only good for checking the existence of a note.
  */
-int notes_get_offset(const struct notes *notes, const char *name, float *offset);
+int notes_get_offset(const struct notes *notes, const char *name, double *offset);
 
 /**
  * Returns the number of notes defined.

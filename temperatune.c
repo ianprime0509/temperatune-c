@@ -7,6 +7,8 @@
 
 static void usage(void);
 
+static void print_notes(const struct temperament *t);
+
 int
 main(int argc, char *argv[])
 {
@@ -27,6 +29,7 @@ main(int argc, char *argv[])
 	}
 
 	printf("name: %s\n", t.name);
+	print_notes(&t);
 
 	return 0;
 }
@@ -36,4 +39,19 @@ usage(void)
 {
 	fprintf(stderr, "usage: temperatune INPUT\n");
 	exit(2);
+}
+
+static void
+print_notes(const struct temperament *t)
+{
+	char **notes, **noteptr;
+	double offset;
+
+	notes = notes_get_names(t->notes);
+	for (noteptr = notes; *noteptr; noteptr++) {
+		notes_get_offset(t->notes, *noteptr, &offset);
+		printf("'%s': %lf\n", *noteptr, offset);
+		free(*noteptr);
+	}
+	free(notes);
 }
