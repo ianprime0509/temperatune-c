@@ -62,6 +62,7 @@ temperament_parse(struct temperament *t, FILE *input, char *errbuf, size_t errsi
 		goto EXIT;
 
 	*t = tmp;
+	temperament_normalize(t);
 	return retval;
 
 EXIT:
@@ -237,7 +238,7 @@ process_next_note(struct note_stack **todo, json_t *notedefs, struct notes *note
 		if (notes_get_offset(notes, newnote, NULL))
 			*todo = note_stack_push(*todo, newnote);
 
-		if (assign_offset(notes, newnote, curroffset + newoffset, errbuf, errsize))
+		if (assign_offset(notes, newnote, curroffset - newoffset, errbuf, errsize))
 			return 1;
 	}
 
@@ -249,7 +250,7 @@ process_next_note(struct note_stack **todo, json_t *notedefs, struct notes *note
 			if (notes_get_offset(notes, newnote, NULL))
 				*todo = note_stack_push(*todo, newnote);
 
-			if (assign_offset(notes, newnote, curroffset - newoffset, errbuf, errsize))
+			if (assign_offset(notes, newnote, curroffset + newoffset, errbuf, errsize))
 				return 1;
 		}
 	}

@@ -44,14 +44,19 @@ usage(void)
 static void
 print_notes(const struct temperament *t)
 {
-	char **notes, **noteptr;
+	char **notes;
+	size_t nnotes;
+	size_t i;
 	double offset;
 
-	notes = notes_get_names(t->notes);
-	for (noteptr = notes; *noteptr; noteptr++) {
-		notes_get_offset(t->notes, *noteptr, &offset);
-		printf("'%s': %lf\n", *noteptr, offset);
-		free(*noteptr);
+	nnotes = notes_size(t->notes);
+	notes = malloc(nnotes * sizeof(*notes));
+	notes_store_names(t->notes, notes);
+	notes_sort_names(t->notes, notes, nnotes);
+	for (i = 0; i < nnotes; i++) {
+		notes_get_offset(t->notes, notes[i], &offset);
+		printf("'%s': %lf\n", notes[i], offset);
+		free(notes[i]);
 	}
 	free(notes);
 }
