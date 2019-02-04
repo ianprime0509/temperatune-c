@@ -1,0 +1,20 @@
+name: Equal temperament
+description: Standard twelve-tone equal temperament.
+source: https://en.wikipedia.org/wiki/Equal_temperament#Twelve-tone_equal_temperament
+octave base: C
+reference pitch: 440.00
+reference note: A
+reference octave: 4
+notes:
+C: -900.00
+C{sharp}: -800.00
+D: -700.00
+E{flat}: -600.00
+E: -500.00
+F: -400.00
+F{sharp}: -300.00
+G: -200.00
+G{sharp}: -100.00
+A: 0.00
+B{flat}: 100.00
+B: 200.00

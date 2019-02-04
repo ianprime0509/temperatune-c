@@ -1,0 +1,20 @@
+name: Quarter-comma meantone
+description: The most common meantone temperament in the sixteenth and seventeenth centuries.
+source: https://en.wikipedia.org/wiki/Quarter-comma_meantone#12-tone_scale
+octave base: C
+reference pitch: 415.00
+reference note: A
+reference octave: 4
+notes:
+C: -889.80
+C{sharp}: -813.70
+D: -696.60
+E{flat}: -579.50
+E: -503.40
+F: -386.30
+F{sharp}: -310.30
+G: -193.20
+G{sharp}: -117.10
+A: 0.00
+B{flat}: 117.10
+B: 193.10

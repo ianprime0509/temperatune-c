@@ -1,0 +1,21 @@
+name: D-based Pythagorean tuning
+description: The Pythagorean tuning system with D as the base note.
+source: https://en.wikipedia.org/wiki/Pythagorean_tuning#Method
+octave base: C
+reference pitch: 440.00
+reference note: A
+reference octave: 4
+notes:
+C: -905.87
+C{sharp}: -792.18
+D: -701.96
+E{flat}: -611.74
+E: -498.05
+F: -407.83
+F{sharp}: -294.14
+G: -203.92
+A{flat}: -113.69
+G{sharp}: -90.23
+A: 0.00
+B{flat}: 90.22
+B: 203.91
