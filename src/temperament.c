@@ -22,6 +22,17 @@ struct note {
 
 static unsigned int hash(const char *str);
 
+void
+temperament_free_contents(struct temperament *t)
+{
+	free(t->name);
+	free(t->description);
+	free(t->source);
+	free(t->octave_base_name);
+	free(t->reference_name);
+	notes_free(t->notes);
+}
+
 double
 temperament_get_pitch(const struct temperament *t, const char *note, int octave)
 {

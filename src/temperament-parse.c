@@ -63,7 +63,6 @@ temperament_parse(struct temperament *t, FILE *input, char *errbuf, size_t errsi
 
 	*t = tmp;
 	temperament_normalize(t);
-	return retval;
 
 EXIT:
 	json_decref(root);
@@ -167,7 +166,6 @@ populate(struct temperament *t, json_t *root, char *errbuf, size_t errsize)
 		error(errbuf, errsize, "notes not found");
 		return 1;
 	}
-
 	if (validate_notes(tmp, errbuf, errsize))
 		return 1;
 
@@ -179,6 +177,11 @@ validate_notes(json_t *notedefs, char *errbuf, size_t errsize)
 {
 	const char *note;
 	json_t *pair;
+
+	if (!json_is_object(notedefs)) {
+		error(errbuf, errsize, "notes must be an object");
+		return 1;
+	}
 
 	json_object_foreach(notedefs, note, pair) {
 		if (!json_is_array(pair) || json_array_size(pair) != 2 ||
@@ -196,19 +199,36 @@ populate_notes(struct temperament *t, json_t *notedefs, char *errbuf, size_t err
 {
 	struct notes *notes;
 	struct note_stack *todo;
+	const char *note;
+	json_t *pair;
 
 	notes = notes_alloc();
 	notes_add(notes, t->reference_name, 0);
 	todo = note_stack_push(NULL, t->reference_name);
 
 	while (todo)
-		if (process_next_note(&todo, notedefs, notes, errbuf, errsize)) {
-			notes_free(notes);
-			return 1;
+		if (process_next_note(&todo, notedefs, notes, errbuf, errsize))
+			goto FAIL;
+
+	/* Ensure we have all the notes we need and none are undefined. */
+	if (notes_get_offset(notes, t->octave_base_name, NULL)) {
+		error(errbuf, errsize, "could not determine offset of octave base '%s'", t->octave_base_name);
+		goto FAIL;
+	}
+
+	json_object_foreach(notedefs, note, pair) {
+		if (notes_get_offset(notes, note, NULL)) {
+			error(errbuf, errsize, "no offset determined for note '%s'", note);
+			goto FAIL;
 		}
+	}
 
 	t->notes = notes;
 	return 0;
+
+FAIL:
+	notes_free(notes);
+	return 1;
 }
 
 static int

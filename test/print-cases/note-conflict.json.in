@@ -1,0 +1,12 @@
+{
+  "name": "Note has conflicting definitions",
+  "octaveBaseName": "C",
+  "referencePitch": 440,
+  "referenceName": "A",
+  "referenceOctave": 4,
+  "notes": {
+    "A": ["E", 5],
+    "C": ["A", 500],
+    "E": ["A", 5]
+  }
+}

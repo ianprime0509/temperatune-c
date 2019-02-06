@@ -15,6 +15,13 @@ struct temperament {
 };
 
 /**
+ * Frees all the fields within the given temperament that were allocated
+ * by temperament_parse (convenience function). Does not free the
+ * temperament pointer itself.
+ */
+void temperament_free_contents(struct temperament *t);
+
+/**
  * Returns the pitch (in Hz) of the given note in the given octave, or
  * -1 if there is no such note.
  */

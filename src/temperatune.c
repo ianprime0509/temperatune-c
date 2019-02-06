@@ -31,6 +31,7 @@ main(int argc, char *argv[])
 	printf("name: %s\n", t.name);
 	print_notes(&t);
 
+	temperament_free_contents(&t);
 	return 0;
 }
 

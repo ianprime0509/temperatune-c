@@ -1,0 +1,12 @@
+{
+  "name": "Note offset can't be calculated",
+  "octaveBaseName": "C",
+  "referencePitch": 440,
+  "referenceName": "A",
+  "referenceOctave": 4,
+  "notes": {
+    "A": ["A", 0],
+    "C": ["A", 500],
+    "E": ["E", 5]
+  }
+}

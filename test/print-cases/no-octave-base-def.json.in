@@ -1,0 +1,10 @@
+{
+  "name": "Octave base not defined",
+  "octaveBaseName": "C",
+  "referencePitch": 440,
+  "referenceName": "A",
+  "referenceOctave": 4,
+  "notes": {
+    "A": ["A", 0]
+  }
+}

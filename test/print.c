@@ -41,6 +41,7 @@ main(int argc, char *argv[])
 	printf("notes:\n");
 	print_notes(&t);
 
+	temperament_free_contents(&t);
 	return 0;
 }
 
