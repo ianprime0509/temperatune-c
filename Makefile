@@ -3,7 +3,6 @@ CPPFLAGS=-D_XOPEN_SOURCE=700 -Iinclude
 
 OBJS=\
 	src/temperament.o \
-	src/temperament-parse.o \
 	src/util.o
 
 OBJS_ALL=$(OBJS) src/temperatune.o test/print.o

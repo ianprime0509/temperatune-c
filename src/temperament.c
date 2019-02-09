@@ -1,120 +1,141 @@
 #include <math.h>
+#include <stdarg.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 
+#include <jansson.h>
+
 #include "temperament.h"
 #include "util.h"
 
-enum { TABLE_SIZE = 17 };
+typedef struct Notestack Notestack;
 
-struct notes {
-	struct note *notes[TABLE_SIZE];
+struct Notestack {
+	const char *name;
+	Notestack *next;
 };
 
-struct note {
-	char *name;
-	/** The offset, in cents, from the base note. */
-	double offset;
-	struct note *next;
-};
+static Notestack *nspush(Notestack *ns, const char *name);
+static Notestack *nspop(Notestack *ns, const char **name);
+
+static void error(char *errbuf, size_t errsize, char *fmt, ...);
+
+static int assignoffset(Notetab *ntab, const char *name, double offset, char *errbuf, size_t errsize);
+static int processnote(Notestack **todo, json_t *notedefs, Notetab *ntab, char *errbuf, size_t errsize);
+static int tpopulate(Temperament *t, json_t *root, char *errbuf, size_t errsize);
+static int tpopulatenotes(Temperament *t, json_t *notedefs, char *errbuf, size_t errsize);
+static int validatenotes(json_t *notedefs, char *errbuf, size_t errsize);
 
 static unsigned int hash(const char *str);
 
 void
-temperament_free_contents(struct temperament *t)
+tfreefields(Temperament *t)
 {
 	free(t->name);
-	free(t->description);
-	free(t->source);
-	free(t->octave_base_name);
-	free(t->reference_name);
-	notes_free(t->notes);
+	free(t->desc);
+	free(t->src);
+	free(t->octavebase);
+	free(t->refname);
+	ntabfreenotes(&t->notes);
 }
 
 double
-temperament_get_pitch(const struct temperament *t, const char *note, int octave)
+tgetpitch(Temperament *t, const char *note, int octave)
 {
 	double offset;
 
-	if (t == NULL)
+	if (ntabget(&t->notes, note, &offset))
 		return -1;
-
-	if (notes_get_offset(t->notes, note, &offset))
-		return -1;
-	offset += (octave - t->reference_octave) * CENTS_IN_OCTAVE;
-	return t->reference_pitch * powf(2, offset / CENTS_IN_OCTAVE);
+	offset += (octave - t->refoctave) * OCTAVE_CENTS;
+	return t->refpitch * powf(2, offset / OCTAVE_CENTS);
 }
 
 void
-temperament_normalize(struct temperament *t)
+tnormalize(Temperament *t)
 {
 	double baseoffset, reloffset;
-	struct note *note;
+	Note *note;
 	int i;
 
 	/* The octave base must be below (or at) the reference pitch. */
-	notes_get_offset(t->notes, t->octave_base_name, &baseoffset);
-	baseoffset = fmod(baseoffset, CENTS_IN_OCTAVE);
+	ntabget(&t->notes, t->octavebase, &baseoffset);
+	baseoffset = fmod(baseoffset, OCTAVE_CENTS);
 	if (baseoffset > 0)
-		baseoffset -= CENTS_IN_OCTAVE;
-	notes_add(t->notes, t->octave_base_name, baseoffset);
+		baseoffset -= OCTAVE_CENTS;
+	ntabadd(&t->notes, t->octavebase, baseoffset);
 
 	/*
 	 * Make sure all other offsets are above the octave base and within
 	 * an octave.
 	 */
-	for (i = 0; i < TABLE_SIZE; i++)
-		for (note = t->notes->notes[i]; note; note = note->next) {
+	for (i = 0; i < TABSIZE; i++)
+		for (note = t->notes[i]; note; note = note->next) {
 			reloffset = note->offset - baseoffset;
-			reloffset = fmod(reloffset, CENTS_IN_OCTAVE);
+			reloffset = fmod(reloffset, OCTAVE_CENTS);
 			if (reloffset < 0)
-				reloffset += CENTS_IN_OCTAVE;
+				reloffset += OCTAVE_CENTS;
 			note->offset = baseoffset + reloffset;
 		}
 }
 
 int
-notes_add(struct notes *notes, const char *name, double offset)
+tparse(Temperament *t, FILE *input, char *errbuf, size_t errsize)
+{
+	json_t *root;
+	json_error_t err;
+	Temperament tmp;
+	int retval;
+
+	retval = 0;
+	root = json_loadf(input, 0, &err);
+	if (!root) {
+		error(errbuf, errsize, "could not parse input: %s", err.text);
+		retval = 1;
+		goto EXIT;
+	}
+
+	retval = tpopulate(&tmp, root, errbuf, errsize);
+	if (retval)
+		goto EXIT;
+
+	*t = tmp;
+	tnormalize(t);
+
+EXIT:
+	json_decref(root);
+	return retval;
+}
+
+void
+ntabadd(Notetab *ntab, const char *name, double offset)
 {
 	unsigned int bucket;
-	struct note *note;
+	Note *note;
 
-	if (notes == NULL)
-		return 1;
-
-	bucket = hash(name) % TABLE_SIZE;
-	for (note = notes->notes[bucket]; note; note = note->next)
+	bucket = hash(name) % TABSIZE;
+	for (note = (*ntab)[bucket]; note; note = note->next)
 		if (!strcmp(name, note->name)) {
 			note->offset = offset;
-			return 0;
+			return;
 		}
 
 	note = xmalloc(sizeof(*note));
 	note->name = xstrdup(name);
 	note->offset = offset;
-	note->next = notes->notes[bucket];
-	notes->notes[bucket] = note;
-	return 0;
-}
-
-struct notes *
-notes_alloc(void)
-{
-	return xcalloc(1, sizeof(struct notes));
+	note->next = (*ntab)[bucket];
+	(*ntab)[bucket] = note;
+	return;
 }
 
 void
-notes_free(struct notes *notes)
+ntabfreenotes(Notetab *ntab)
 {
-	struct note *note, *next;
+	Note *note, *next;
 
-	if (!notes)
-		return;
-
-	for (int i = 0; i < TABLE_SIZE; i++) {
-		note = notes->notes[i];
+	for (int i = 0; i < TABSIZE; i++) {
+		note = (*ntab)[i];
 		while (note) {
 			next = note->next;
 			free(note->name);
@@ -122,20 +143,16 @@ notes_free(struct notes *notes)
 			note = next;
 		}
 	}
-	free(notes);
 }
 
 int
-notes_get_offset(const struct notes *notes, const char *name, double *offset)
+ntabget(Notetab *ntab, const char *name, double *offset)
 {
 	unsigned int bucket;
-	const struct note *note;
+	Note *note;
 
-	if (!notes)
-		return 1;
-
-	bucket = hash(name) % TABLE_SIZE;
-	for (note = notes->notes[bucket]; note; note = note->next)
+	bucket = hash(name) % TABSIZE;
+	for (note = (*ntab)[bucket]; note; note = note->next)
 		if (!strcmp(name, note->name)) {
 			if (offset)
 				*offset = note->offset;
@@ -145,21 +162,21 @@ notes_get_offset(const struct notes *notes, const char *name, double *offset)
 }
 
 size_t
-notes_size(const struct notes *notes)
+ntabsize(Notetab *ntab)
 {
 	size_t size;
 	int i;
-	const struct note *note;
+	Note *note;
 
 	size = 0;
-	for (i = 0; i < TABLE_SIZE; i++)
-		for (note = notes->notes[i]; note; note = note->next)
+	for (i = 0; i < TABSIZE; i++)
+		for (note = (*ntab)[i]; note; note = note->next)
 			size++;
 	return size;
 }
 
 void
-notes_sort_names(const struct notes *notes, char *names[], size_t nnames)
+ntabsortnames(Notetab *ntab, char *names[], size_t nnames)
 {
 	size_t i, j;
 	double off1, off2;
@@ -171,8 +188,8 @@ notes_sort_names(const struct notes *notes, char *names[], size_t nnames)
 	 */
 	for (i = 0; i < nnames; i++)
 		for (j = i; j > 0; j--) {
-			notes_get_offset(notes, names[j - 1], &off1);
-			notes_get_offset(notes, names[j], &off2);
+			ntabget(ntab, names[j - 1], &off1);
+			ntabget(ntab, names[j], &off2);
 			if (off1 > off2) {
 				tmp = names[j - 1];
 				names[j - 1] = names[j];
@@ -184,14 +201,235 @@ notes_sort_names(const struct notes *notes, char *names[], size_t nnames)
 }
 
 void
-notes_store_names(const struct notes *notes, char *names[])
+ntabstorenames(Notetab *ntab, char *names[])
 {
 	int i;
-	const struct note *note;
+	Note *note;
 
-	for (i = 0; i < TABLE_SIZE; i++)
-		for (note = notes->notes[i]; note; note = note->next)
+	for (i = 0; i < TABSIZE; i++)
+		for (note = (*ntab)[i]; note; note = note->next)
 			*names++ = xstrdup(note->name);
+}
+
+static Notestack *
+nspush(Notestack *ns, const char *name)
+{
+	Notestack *new;
+
+	new = malloc(sizeof(*new));
+	new->name = name;
+	new->next = ns;
+	return new;
+}
+
+static Notestack *
+nspop(Notestack *ns, const char **name)
+{
+	Notestack *next;
+
+	next = ns->next;
+	*name = ns->name;
+	free(ns);
+	return next;
+}
+
+static void
+error(char *errbuf, size_t errsize, char *fmt, ...)
+{
+	va_list args;
+
+	if (!errbuf)
+		return;
+	va_start(args, fmt);
+	vsnprintf(errbuf, errsize, fmt, args);
+	va_end(args);
+}
+
+static int
+assignoffset(Notetab *ntab, const char *name, double offset, char *errbuf, size_t errsize)
+{
+	double prevoffset;
+
+	if (!ntabget(ntab, name, &prevoffset) && fmod(offset - prevoffset, OCTAVE_CENTS) != 0) {
+		error(errbuf, errsize, "found conflicting offset for '%s'", name);
+		return 1;
+	}
+	ntabadd(ntab, name, offset);
+	return 0;
+}
+
+static int
+processnote(Notestack **todo, json_t *notedefs, Notetab *ntab, char *errbuf, size_t errsize)
+{
+	const char *currnote, *newnote, *tmp;
+	double curroffset, newoffset;
+	json_t *pair;
+
+	*todo = nspop(*todo, &currnote);
+
+	ntabget(ntab, currnote, &curroffset);
+
+	/* Check for the note on the left hand side. */
+	pair = json_object_get(notedefs, currnote);
+	if (pair) {
+		newnote = json_string_value(json_array_get(pair, 0));
+		newoffset = json_number_value(json_array_get(pair, 1));
+
+		/*
+		Make sure not to add the new note as a "todo" if it's already
+		defined. Even if it's already defined, though, we check the
+		offset below to detect invalid input (multiple possible values
+		for an offset).
+		 */
+		if (ntabget(ntab, newnote, NULL))
+			*todo = nspush(*todo, newnote);
+
+		if (assignoffset(ntab, newnote, curroffset - newoffset, errbuf, errsize))
+			return 1;
+	}
+
+	/* Check for the note on the right hand side. */
+	json_object_foreach(notedefs, newnote, pair) {
+		tmp = json_string_value(json_array_get(pair, 0));
+		if (!strcmp(tmp, currnote)) {
+			newoffset = json_number_value(json_array_get(pair, 1));
+			if (ntabget(ntab, newnote, NULL))
+				*todo = nspush(*todo, newnote);
+
+			if (assignoffset(ntab, newnote, curroffset + newoffset, errbuf, errsize))
+				return 1;
+		}
+	}
+
+	return 0;
+}
+
+static int
+tpopulate(Temperament *t, json_t *root, char *errbuf, size_t errsize)
+{
+	json_t *tmp;
+	const char *str;
+	double d;
+
+	if (!json_is_object(root)) {
+		error(errbuf, errsize, "input is not a JSON object");
+		return 1;
+	}
+
+	if (!(str = json_string_value(json_object_get(root, "name")))) {
+		error(errbuf, errsize, "name not found");
+		return 1;
+	}
+	t->name = xstrdup(str);
+
+	if ((str = json_string_value(json_object_get(root, "description"))))
+		t->desc = xstrdup(str);
+	else
+		t->desc = NULL;
+
+	if ((str = json_string_value(json_object_get(root, "source"))))
+		t->src = xstrdup(str);
+	else
+		t->src = NULL;
+
+	if (!(str = json_string_value(json_object_get(root, "octaveBaseName")))) {
+		error(errbuf, errsize, "octave base name not found");
+		return 1;
+	}
+	t->octavebase = xstrdup(str);
+
+	tmp = json_object_get(root, "referencePitch");
+	if (!json_is_number(tmp)) {
+		error(errbuf, errsize, "reference pitch not found");
+		return 1;
+	}
+	d = json_number_value(tmp);
+	if (d <= 0) {
+		error(errbuf, errsize, "reference pitch must be greater than zero");
+		return 1;
+	}
+	t->refpitch = d;
+
+	if (!(str = json_string_value(json_object_get(root, "referenceName")))) {
+		error(errbuf, errsize, "reference note name not found");
+		return 1;
+	}
+	t->refname = xstrdup(str);
+
+	tmp = json_object_get(root, "referenceOctave");
+	if (!json_is_integer(tmp)) {
+		error(errbuf, errsize, "reference octave not found");
+		return 1;
+	}
+	t->refoctave = json_integer_value(tmp);
+
+	if (!(tmp = json_object_get(root, "notes"))) {
+		error(errbuf, errsize, "notes not found");
+		return 1;
+	}
+	if (validatenotes(tmp, errbuf, errsize))
+		return 1;
+
+	return tpopulatenotes(t, tmp, errbuf, errsize);
+}
+
+static int
+tpopulatenotes(Temperament *t, json_t *notedefs, char *errbuf, size_t errsize)
+{
+	Notetab ntab;
+	Notestack *todo;
+	const char *note;
+	json_t *pair;
+
+	memset(&ntab, 0, sizeof(ntab));
+	ntabadd(&ntab, t->refname, 0);
+	todo = nspush(NULL, t->refname);
+
+	while (todo)
+		if (processnote(&todo, notedefs, &ntab, errbuf, errsize))
+			goto FAIL;
+
+	/* Ensure we have all the notes we need and none are undefined. */
+	if (ntabget(&ntab, t->octavebase, NULL)) {
+		error(errbuf, errsize, "could not determine offset of octave base '%s'", t->octavebase);
+		goto FAIL;
+	}
+
+	json_object_foreach(notedefs, note, pair) {
+		if (ntabget(&ntab, note, NULL)) {
+			error(errbuf, errsize, "no offset determined for note '%s'", note);
+			goto FAIL;
+		}
+	}
+
+	memcpy(&t->notes, &ntab, sizeof(ntab));
+	return 0;
+
+FAIL:
+	ntabfreenotes(&ntab);
+	return 1;
+}
+
+static int
+validatenotes(json_t *notedefs, char *errbuf, size_t errsize)
+{
+	const char *note;
+	json_t *pair;
+
+	if (!json_is_object(notedefs)) {
+		error(errbuf, errsize, "notes must be an object");
+		return 1;
+	}
+
+	json_object_foreach(notedefs, note, pair) {
+		if (!json_is_array(pair) || json_array_size(pair) != 2 ||
+		    !json_is_string(json_array_get(pair, 0)) ||
+		    !json_is_number(json_array_get(pair, 1))) {
+			error(errbuf, errsize, "note '%s' is defined incorrectly", note);
+			return 1;
+		}
+	}
+	return 0;
 }
 
 static unsigned int

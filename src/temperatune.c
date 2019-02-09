@@ -7,13 +7,13 @@
 
 static void usage(void);
 
-static void print_notes(const struct temperament *t);
+static void printnotes(Temperament *t);
 
 int
 main(int argc, char *argv[])
 {
 	FILE *input;
-	struct temperament t;
+	Temperament t;
 	char errbuf[256];
 
 	if (argc != 2)
@@ -23,15 +23,15 @@ main(int argc, char *argv[])
 		perror("temperatune: cannot open temperament file");
 		return 1;
 	}
-	if (temperament_parse(&t, input, errbuf, sizeof(errbuf))) {
+	if (tparse(&t, input, errbuf, sizeof(errbuf))) {
 		fprintf(stderr, "temperatune: %s\n", errbuf);
 		return 1;
 	}
 
 	printf("name: %s\n", t.name);
-	print_notes(&t);
+	printnotes(&t);
 
-	temperament_free_contents(&t);
+	tfreefields(&t);
 	return 0;
 }
 
@@ -43,19 +43,19 @@ usage(void)
 }
 
 static void
-print_notes(const struct temperament *t)
+printnotes(Temperament *t)
 {
 	char **notes;
 	size_t nnotes;
 	size_t i;
 	double offset;
 
-	nnotes = notes_size(t->notes);
+	nnotes = ntabsize(&t->notes);
 	notes = malloc(nnotes * sizeof(*notes));
-	notes_store_names(t->notes, notes);
-	notes_sort_names(t->notes, notes, nnotes);
+	ntabstorenames(&t->notes, notes);
+	ntabsortnames(&t->notes, notes, nnotes);
 	for (i = 0; i < nnotes; i++) {
-		notes_get_offset(t->notes, notes[i], &offset);
+		ntabget(&t->notes, notes[i], &offset);
 		printf("'%s': %lf\n", notes[i], offset);
 		free(notes[i]);
 	}
