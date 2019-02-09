@@ -311,14 +311,16 @@ tpopulate(Temperament *t, json_t *root, char *errbuf, size_t errsize)
 	const char *str;
 	double d;
 
+	memset(t, 0, sizeof(*t));
+
 	if (!json_is_object(root)) {
 		error(errbuf, errsize, "input is not a JSON object");
-		return 1;
+		goto FAIL;
 	}
 
 	if (!(str = json_string_value(json_object_get(root, "name")))) {
 		error(errbuf, errsize, "name not found");
-		return 1;
+		goto FAIL;
 	}
 	t->name = xstrdup(str);
 
@@ -334,43 +336,49 @@ tpopulate(Temperament *t, json_t *root, char *errbuf, size_t errsize)
 
 	if (!(str = json_string_value(json_object_get(root, "octaveBaseName")))) {
 		error(errbuf, errsize, "octave base name not found");
-		return 1;
+		goto FAIL;
 	}
 	t->octavebase = xstrdup(str);
 
 	tmp = json_object_get(root, "referencePitch");
 	if (!json_is_number(tmp)) {
 		error(errbuf, errsize, "reference pitch not found");
-		return 1;
+		goto FAIL;
 	}
 	d = json_number_value(tmp);
 	if (d <= 0) {
 		error(errbuf, errsize, "reference pitch must be greater than zero");
-		return 1;
+		goto FAIL;
 	}
 	t->refpitch = d;
 
 	if (!(str = json_string_value(json_object_get(root, "referenceName")))) {
 		error(errbuf, errsize, "reference note name not found");
-		return 1;
+		goto FAIL;
 	}
 	t->refname = xstrdup(str);
 
 	tmp = json_object_get(root, "referenceOctave");
 	if (!json_is_integer(tmp)) {
 		error(errbuf, errsize, "reference octave not found");
-		return 1;
+		goto FAIL;
 	}
 	t->refoctave = json_integer_value(tmp);
 
 	if (!(tmp = json_object_get(root, "notes"))) {
 		error(errbuf, errsize, "notes not found");
-		return 1;
+		goto FAIL;
 	}
 	if (validatenotes(tmp, errbuf, errsize))
-		return 1;
+		goto FAIL;
 
-	return tpopulatenotes(t, tmp, errbuf, errsize);
+	if (tpopulatenotes(t, tmp, errbuf, errsize))
+		goto FAIL;
+	return 0;
+
+FAIL:
+	tfreefields(t);
+	return 1;
 }
 
 static int
