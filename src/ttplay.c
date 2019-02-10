@@ -21,7 +21,7 @@ main(int argc, char *argv[])
 {
 	int opt;
 	unsigned long time;
-	double volume, freq;
+	double volume, freq, refpitch;
 	char *end, errbuf[256];
 	FILE *tfile;
 	Temperament t;
@@ -29,8 +29,15 @@ main(int argc, char *argv[])
 
 	time = 5;
 	volume = 0.5;
-	while ((opt = getopt(argc, argv, ":t:v:")) != -1)
+	refpitch = 0;
+	while ((opt = getopt(argc, argv, ":r:t:v:")) != -1)
 		switch (opt) {
+		case 'r':
+			errno = 0;
+			refpitch = strtod(optarg, &end);
+			if (errno != 0 || *end != '\0' || *optarg == '\0' || refpitch <= 0)
+				die("bad reference pitch: '%s'", optarg);
+			break;
 		case 't':
 			errno = 0;
 			time = strtoul(optarg, &end, 10);
@@ -65,6 +72,8 @@ main(int argc, char *argv[])
 		die("could not open temperament file");
 	if (tparse(&t, tfile, errbuf, sizeof(errbuf)))
 		die("%s", errbuf);
+	if (refpitch > 0)
+		t.refpitch = refpitch;
 	if ((freq = tgetpitch(&t, argv[optind + 1], octave)) < 0)
 		die("bad note: '%s'", argv[optind + 1]);
 
@@ -115,6 +124,6 @@ FAIL:
 static void
 usage(void)
 {
-	fprintf(stderr, "usage: temperatune [-t TIME] [-v VOLUME] TEMPERAMENT NOTE OCTAVE\n");
+	fprintf(stderr, "usage: temperatune [-r REFERENCE] [-t TIME] [-v VOLUME] TEMPERAMENT NOTE OCTAVE\n");
 	exit(2);
 }
