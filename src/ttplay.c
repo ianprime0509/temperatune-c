@@ -82,7 +82,7 @@ play(double freq, double volume, unsigned int time)
 	PaError err;
 
 	if (sbinit(&sb, freq, SAMPRATE, volume))
-		die("pitch out of range: %ld Hz", freq);
+		die("pitch out of range: %lf Hz", freq);
 	if ((err = Pa_Initialize()) != paNoError) {
 		errmsg = "could not initialize PortAudio: %s";
 		goto FAIL;

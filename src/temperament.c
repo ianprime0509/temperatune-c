@@ -49,7 +49,7 @@ tgetpitch(Temperament *t, const char *note, int octave)
 	if (ntabget(&t->notes, note, &offset))
 		return -1;
 	offset += (octave - t->refoctave) * OCTAVE_CENTS;
-	return t->refpitch * powf(2, offset / OCTAVE_CENTS);
+	return t->refpitch * pow(2, offset / OCTAVE_CENTS);
 }
 
 void
