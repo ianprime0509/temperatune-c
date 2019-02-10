@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -13,6 +14,8 @@ die(const char *fmt, ...)
 	va_start(args, fmt);
 	fprintf(stderr, "temperatune: ");
 	vfprintf(stderr, fmt, args);
+	if (errno != 0)
+		fprintf(stderr, ": %s", strerror(errno));
 	fprintf(stderr, "\n");
 	va_end(args);
 	exit(1);
