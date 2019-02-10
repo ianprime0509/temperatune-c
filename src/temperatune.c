@@ -2,62 +2,51 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "temperament.h"
+#include <portaudio.h>
+
+#include "audio.h"
 #include "util.h"
 
-static void usage(void);
+const double SAMPRATE = 44100;
 
-static void printnotes(Temperament *t);
+static void usage(void);
 
 int
 main(int argc, char *argv[])
 {
-	FILE *input;
-	Temperament t;
-	char errbuf[256];
+	Sinebuf sb;
+	PaStream *stream;
+	PaError err;
 
 	if (argc != 2)
 		usage();
 
-	if (!(input = fopen(argv[1], "r"))) {
-		perror("temperatune: cannot open temperament file");
-		return 1;
-	}
-	if (tparse(&t, input, errbuf, sizeof(errbuf))) {
-		fprintf(stderr, "temperatune: %s\n", errbuf);
-		return 1;
-	}
+	sbinit(&sb, atof(argv[1]), SAMPRATE);
+	err = Pa_Initialize();
+	if (err != paNoError)
+		die("could not initialize PortAudio: %s", Pa_GetErrorText(err));
 
-	printf("name: %s\n", t.name);
-	printnotes(&t);
+	err = Pa_OpenDefaultStream(&stream, 0, 1, paFloat32, SAMPRATE, paFramesPerBufferUnspecified, sbcallback, &sb);
+	if (err != paNoError)
+		die("could not open stream: %s", Pa_GetErrorText(err));
 
-	tfreefields(&t);
+	err = Pa_StartStream(stream);
+	if (err != paNoError)
+		die("could not start stream: %s", Pa_GetErrorText(err));
+	Pa_Sleep(2000);
+	err = Pa_AbortStream(stream);
+	if (err != paNoError)
+		die("could not abort stream: %s", Pa_GetErrorText(err));
+	err = Pa_Terminate();
+	if (err != paNoError)
+		die("could not terminate PortAudio: %s", Pa_GetErrorText(err));
+
 	return 0;
 }
 
 static void
 usage(void)
 {
-	fprintf(stderr, "usage: temperatune INPUT\n");
+	fprintf(stderr, "usage: temperatune FREQ\n");
 	exit(2);
-}
-
-static void
-printnotes(Temperament *t)
-{
-	char **notes;
-	size_t nnotes;
-	size_t i;
-	double offset;
-
-	nnotes = ntabsize(&t->notes);
-	notes = malloc(nnotes * sizeof(*notes));
-	ntabstorenames(&t->notes, notes);
-	ntabsortnames(&t->notes, notes, nnotes);
-	for (i = 0; i < nnotes; i++) {
-		ntabget(&t->notes, notes[i], &offset);
-		printf("'%s': %lf\n", notes[i], offset);
-		free(notes[i]);
-	}
-	free(notes);
 }

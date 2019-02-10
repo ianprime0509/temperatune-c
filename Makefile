@@ -1,7 +1,9 @@
 CFLAGS=-Wall -Wextra -std=c99 -pedantic
 CPPFLAGS=-D_XOPEN_SOURCE=700 -Iinclude
+LIBS=-lportaudio -ljansson -lm -lpthread
 
 OBJS=\
+	src/audio.o \
 	src/temperament.o \
 	src/util.o
 
@@ -10,7 +12,7 @@ OBJS_ALL=$(OBJS) src/temperatune.o test/print.o
 TESTPROGS=test/print
 
 temperatune: $(OBJS) src/temperatune.o
-	$(CC) $(CFLAGS) -o temperatune $(OBJS) src/temperatune.o -ljansson -lm
+	$(CC) $(CFLAGS) -o temperatune $(OBJS) src/temperatune.o $(LIBS)
 
 check: $(TESTPROGS) test/run.sh
 	cd test && sh run.sh
