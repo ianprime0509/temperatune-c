@@ -11,10 +11,53 @@
 #include "temperament.h"
 #include "util.h"
 
-const double SAMPRATE = 44100;
+#define SAMPRATE 44100
 
-static void play(double freq, double volume, unsigned int time);
-static void usage(void);
+static void
+usage(void)
+{
+	fprintf(stderr, "usage: temperatune [-r reference] [-t time] [-v volume] temperament note octave\n");
+	exit(2);
+}
+
+static void
+play(double freq, double volume, unsigned int time)
+{
+	Sinebuf sb;
+	PaStream *stream;
+	const char *errmsg;
+	PaError err;
+
+	if (sbinit(&sb, freq, SAMPRATE, volume))
+		die("pitch out of range: %lf Hz", freq);
+	if ((err = Pa_Initialize()) != paNoError) {
+		errmsg = "could not initialize PortAudio: %s";
+		goto FAIL;
+	}
+
+	err = Pa_OpenDefaultStream(&stream, 0, 1, paFloat32, SAMPRATE, paFramesPerBufferUnspecified, sbcallback, &sb);
+	if (err != paNoError) {
+		errmsg = "could not open stream: %s";
+		goto FAIL;
+	}
+
+	if ((err = Pa_StartStream(stream)) != paNoError) {
+		errmsg = "could not start stream: %s";
+		goto FAIL;
+	}
+	sleep(time);
+	if ((err = Pa_AbortStream(stream)) != paNoError) {
+		errmsg = "could not abort stream: %s";
+		goto FAIL;
+	}
+
+	Pa_Terminate();
+	return;
+
+FAIL:
+	Pa_Terminate();
+	die(errmsg, Pa_GetErrorText(err));
+}
 
 int
 main(int argc, char *argv[])
@@ -82,48 +125,3 @@ main(int argc, char *argv[])
 	return 0;
 }
 
-static void
-play(double freq, double volume, unsigned int time)
-{
-	Sinebuf sb;
-	PaStream *stream;
-	const char *errmsg;
-	PaError err;
-
-	if (sbinit(&sb, freq, SAMPRATE, volume))
-		die("pitch out of range: %lf Hz", freq);
-	if ((err = Pa_Initialize()) != paNoError) {
-		errmsg = "could not initialize PortAudio: %s";
-		goto FAIL;
-	}
-
-	err = Pa_OpenDefaultStream(&stream, 0, 1, paFloat32, SAMPRATE, paFramesPerBufferUnspecified, sbcallback, &sb);
-	if (err != paNoError) {
-		errmsg = "could not open stream: %s";
-		goto FAIL;
-	}
-
-	if ((err = Pa_StartStream(stream)) != paNoError) {
-		errmsg = "could not start stream: %s";
-		goto FAIL;
-	}
-	sleep(time);
-	if ((err = Pa_AbortStream(stream)) != paNoError) {
-		errmsg = "could not abort stream: %s";
-		goto FAIL;
-	}
-
-	Pa_Terminate();
-	return;
-
-FAIL:
-	Pa_Terminate();
-	die(errmsg, Pa_GetErrorText(err));
-}
-
-static void
-usage(void)
-{
-	fprintf(stderr, "usage: temperatune [-r REFERENCE] [-t TIME] [-v VOLUME] TEMPERAMENT NOTE OCTAVE\n");
-	exit(2);
-}
