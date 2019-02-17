@@ -13,7 +13,7 @@ check: $(TESTPROGS) test/run.sh
 	cd test && sh run.sh
 
 clean:
-	rm -f ttplay test/print $(OBJS) test/print.o
+	rm -f ttplay test/print $(OBJS) ttplay.o test/print.o
 
 test/print: $(OBJS) test/print.o
 	$(CC) $(CFLAGS) -I. -o test/print $(OBJS) test/print.o $(LIBS)
