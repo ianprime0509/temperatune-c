@@ -1,0 +1,142 @@
+.Dd February 17, 2019
+.Dt TEMPERATUNE 5
+.Os
+.Sh NAME
+.Nm temperatune
+.Nd description of the temperatune JSON format
+.Sh DESCRIPTION
+.Nm
+is a simple and flexible JSON format for describing musical temperaments.
+A temperament is represented as a JSON object containing the following
+fields:
+.Bl -tag -indent 6n
+.It Sy name
+The name of the temperament.
+Required.
+.It Sy description
+A description of the temperament.
+.It Sy source
+The source of the temperament data, such as a website or a book.
+.It Sy octaveBaseName
+The name of the octave base note.
+Required.
+.It Sy referencePitch
+The standard reference pitch for the temperament, in Hz.
+Required.
+.It Sy referenceName
+The name of the reference note.
+Required.
+.It Sy referenceOctave
+The octave number of the reference note that produces the standard
+reference pitch.
+Required.
+.It Sy notes
+A description of the notes in the temperament (see
+.Sx NOTE DEFINITIONS ) .
+Required.
+.El
+.Ss NOTE DEFINITIONS
+The
+.Sy notes
+object provides a description of each note in a temperament as an offset
+(in cents) from some other note.
+Each property name in the object is the name of a note, and each property
+value is a pair consisting of the name of some other note and the relative
+offset between them.
+For example, the following definition states that the note named
+.Dq C
+is 100 cents higher than the note named
+.Dq B :
+.Pp
+.D1 "C": ["B", 100]
+.Pp
+Notes can be defined using any combination of offsets, provided only
+that the definitions do not conflict and that the offset of every note
+from the reference note can be determined.
+Since offsets are used only to determine relative pitch within an
+octave, offsets may differ by multiples of 1200 cents (one octave)
+without causing conflicts.
+For example, the following two definitions are in conflict:
+.Bd -literal -offset indent
+"B": ["C", 100],
+"C": ["B", 100]
+.Ed
+.Pp
+However, the following two definitions are acceptable, although one
+is superfluous:
+.Bd -literal -offset indent
+"B": ["C", -100],
+"C": ["B", 1300]
+.Ed
+.Pp
+If a note's offset can be determined from the other definitions, it is
+even possible to include a self-referential definition so that each note
+has an explicit definition (although this is unnecessary):
+.Pp
+.D1 "C": ["C", 0]
+.Pp
+For an example of how these definitions look in practice, see
+.Sx EXAMPLES .
+.Sh EXAMPLES
+Here is a
+.Nm
+description of standard twelve-tone equal temperament, where each note
+is defined in terms of the note directly below it:
+.Bd -literal
+{
+  "name": "Equal temperament",
+  "description": "Standard twelve-tone equal temperament.",
+  "source":
+    "https://en.wikipedia.org/wiki/Equal_temperament#Twelve-tone_equal_temperament",
+  "referenceName": "A",
+  "referencePitch": 440,
+  "referenceOctave": 4,
+  "octaveBaseName": "C",
+  "notes": {
+    "C": ["C", 0],
+    "C{sharp}": ["C", 100],
+    "D": ["C{sharp}", 100],
+    "E{flat}": ["D", 100],
+    "E": ["E{flat}", 100],
+    "F": ["E", 100],
+    "F{sharp}": ["F", 100],
+    "G": ["F{sharp}", 100],
+    "G{sharp}": ["G", 100],
+    "A": ["G{sharp}", 100],
+    "B{flat}": ["A", 100],
+    "B": ["B{flat}", 100]
+  }
+}
+.Ed
+.Pp
+For an alternate approach, here is a description of quarter-comma meantone
+temperament where each note is defined in terms of its offset from D:
+.Bd -literal
+{
+  "name": "Quarter-comma meantone",
+  "description":
+    "The most common meantone temperament in the sixteenth and seventeenth centuries.",
+  "source":
+    "https://en.wikipedia.org/wiki/Quarter-comma_meantone#12-tone_scale",
+  "referenceName": "A",
+  "referencePitch": 415,
+  "referenceOctave": 4,
+  "octaveBaseName": "C",
+  "notes": {
+    "E{flat}": ["D", 117.1],
+    "B{flat}": ["D", 813.7],
+    "F": ["D", 310.3],
+    "C": ["D", 1006.8],
+    "G": ["D", 503.4],
+    "D": ["D", 0],
+    "A": ["D", 696.6],
+    "E": ["D", 193.2],
+    "B": ["D", 889.7],
+    "F{sharp}": ["D", 386.3],
+    "C{sharp}": ["D", 1082.9],
+    "G{sharp}": ["D", 579.5]
+  }
+}
+.Ed
+.Sh SEE ALSO
+.Pa temperatune.schema.json

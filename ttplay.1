@@ -1,0 +1,37 @@
+.Dd February 17, 2019
+.Dt TTPLAY 1
+.Os
+.Sh NAME
+.Nm ttplay
+.Nd play a single note from a temperament
+.Sh SYNOPSIS
+.Nm
+.Op Fl r Ar reference
+.Op Fl t Ar time
+.Op Fl v Ar volume
+.Ar temperament
+.Ar note
+.Ar octave
+.Sh DESCRIPTION
+.Nm
+parses a temperament file in
+.Xr temperatune 5
+format and plays the specified note in the specified octave.
+The options are as follows:
+.Bl -tag -offset indent
+.It Fl r Ar reference
+Set the reference pitch (in Hz), overriding the default value specified
+in the temperament file.
+.It Fl t Ar time
+Play the note for
+.Ar time
+seconds.
+The default value is 5.
+.It Fl v Ar volume
+Adjust the playback volume to
+.Ar volume ,
+a number between 0 and 1 (inclusive).
+The default value is 0.5.
+.El
+.Sh SEE ALSO
+.Xr temperatune 5
