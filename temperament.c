@@ -1,3 +1,19 @@
+/*
+ * Copyright (c) 2019 Ian Johnson
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
 #include <math.h>
 #include <stdarg.h>
 #include <stddef.h>
@@ -276,10 +292,10 @@ processnote(Notestack **todo, json_t *notedefs, Notetab *ntab, char *errbuf, siz
 		newoffset = json_number_value(json_array_get(pair, 1));
 
 		/*
-		Make sure not to add the new note as a "todo" if it's already
-		defined. Even if it's already defined, though, we check the
-		offset below to detect invalid input (multiple possible values
-		for an offset).
+		 * Make sure not to add the new note as a "todo" if it's already
+		 * defined. Even if it's already defined, though, we check the
+		 * offset below to detect invalid input (multiple possible values
+		 * for an offset).
 		 */
 		if (ntabget(ntab, newnote, NULL))
 			*todo = nspush(*todo, newnote);
